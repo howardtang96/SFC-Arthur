@@ -209,6 +209,7 @@ def fetch_contact(session, ceref, role_type):
         try:
             r0 = session.get(f"{BASE}/{path}/{ceref}/addresses", timeout=20)
             ind = extract_var(r0.text, "indData")
+            ind = [x for x in (ind or []) if isinstance(x, dict)]
             if ind:
                 result["indi_principal_ceref"] = ind[0].get("prinCeref")
                 result["indi_principal_name"]  = (
@@ -222,6 +223,7 @@ def fetch_contact(session, ceref, role_type):
     try:
         r1      = session.get(f"{BASE}/{path}/{ceref}/co", timeout=20)
         coff    = extract_var(r1.text, "cofficerData")
+        coff    = [c for c in (coff or []) if isinstance(c, dict)]
         if coff:
             c = coff[0]
             result["co_tel"]     = clean_val(c.get("tel"))
@@ -240,6 +242,10 @@ def fetch_contact(session, ceref, role_type):
         emails   = extract_var(r2.text, "emailData")
         websites = extract_var(r2.text, "websiteData")
         addrs    = extract_var(r2.text, "addressData")
+        # SFC returns [None] for absent email/website blocks -> filter out None elems
+        emails   = [e for e in (emails   or []) if isinstance(e, dict)]
+        websites = [w for w in (websites or []) if isinstance(w, dict)]
+        addrs    = [a for a in (addrs    or []) if isinstance(a, dict)]
         if emails:   result["company_email"]   = clean_val(emails[0].get("email"))
         if websites: result["company_website"] = clean_val(websites[0].get("website"))
         if addrs:
