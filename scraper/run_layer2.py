@@ -27,8 +27,17 @@ FIELDS = ["ceref", "name_eng", "name_chi", "role_type", "licence_tags",
           "company_email", "company_website", "company_address",
           "indi_principal_ceref", "indi_principal_name"]
 
-sess = requests.Session()
-sess.headers.update(s.HEADERS)
+def new_session():
+    sess = requests.Session()
+    sess.headers.update(s.HEADERS)
+    return sess
+
+
+# SFC progressively throttles a long-lived session (F5 ASM cookie): latency
+# degrades from ~0.3s to minutes after a few hundred requests. Rotating the
+# session restores normal speed. Request delays are unchanged.
+SESSION_ROTATE_EVERY = 200
+sess = new_session()
 
 todo = ents[~ents.ceref.astype(str).isin(done)]
 total = len(todo)
@@ -49,6 +58,10 @@ with open(ckpt, "a", newline="", encoding="utf-8") as f:
         f.flush()
         if i % 50 == 0:
             log.info(f"Layer2 {role} progress: {i}/{total}")
+        if i % SESSION_ROTATE_EVERY == 0:
+            sess.close()
+            sess = new_session()
+            log.info(f"Layer2 {role}: session rotated at {i}")
         s.time.sleep(s.DETAIL_DELAY)
 
 log.info(f"LAYER2 {role} DONE -> {ckpt}")
